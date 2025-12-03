@@ -7,6 +7,12 @@ from PIL import Image
 import tensorflow as tf
 from tensorflow import keras
 
+# ====== AQUÍ VAN LAS CONSTANTES DEL MODELO =====================
+
+IMG_HEIGHT = 128   # <-- alto con el que ENTRENASTE (ejemplo)
+IMG_WIDTH  = 128   # <-- ancho con el que ENTRENASTE (ejemplo)
+CHANNELS   = 1     # <-- 1 si entrenaste en escala de grises, 3 si fue RGB
+
 # ============================================
 # Configuración de TensorFlow (GPU opcional)
 # ============================================
@@ -55,34 +61,29 @@ def load_model():
 def preprocess_image(image: Image.Image) -> np.ndarray:
     """
     Preprocesar imagen siguiendo los mismos pasos del entrenamiento:
-    1. Redimensionar a 300x300
-    2. Convertir a RGB si es necesario
-    3. Pasar a escala de grises (1 canal)
-    4. Normalizar a [0, 1]
-    5. Añadir dimensión de batch
+    1. Redimensionar a IMG_WIDTH x IMG_HEIGHT
+    2. Convertir a RGB o escala de grises según CHANNELS
+    3. Normalizar a [0, 1]
+    4. Añadir dimensión de batch
     """
     try:
-        # Redimensionar
-        image = image.resize((300, 300))
+        # 1. Escala de grises (equivalente a cv2.IMREAD_GRAYSCALE)
+        image = image.convert("L")
 
-        # Asegurar modo RGB
-        if image.mode != 'RGB':
-            image = image.convert('RGB')
+        # 2. Redimensionar al tamaño usado en el entrenamiento
+        image = image.resize((IMG_WIDTH, IMG_HEIGHT))  # (128, 128)
 
-        # A numpy array
-        img_array = np.array(image)
+        # 3. Convertir a array numpy
+        img_array = np.array(image)  # shape: (128, 128)
 
-        # Si tiene 3 canales (RGB), tomamos solo uno (por ejemplo canal R)
-        if len(img_array.shape) == 3 and img_array.shape[2] == 3:
-            img_array = img_array[:, :, 0]
+        # 4. Añadir canal (H, W, 1)
+        if img_array.ndim == 2:
+            img_array = np.expand_dims(img_array, axis=-1)
 
-        # Dar forma (300, 300, 1)
-        img_array = img_array.reshape((300, 300, 1))
+        # 5. Normalizar como en el notebook: / 255.0
+        img_array = img_array.astype("float32") / 255.0
 
-        # Normalizar
-        img_array = img_array.astype('float32') / 255.0
-
-        # Añadir dimensión batch: (1, 300, 300, 1)
+        # 6. Añadir dimensión batch: (1, 128, 128, 1)
         img_array = np.expand_dims(img_array, axis=0)
 
         return img_array
